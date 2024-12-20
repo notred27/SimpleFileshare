@@ -2,7 +2,7 @@ import http.server
 from http.cookies import SimpleCookie
 import os
 import urllib.parse
-
+import cgi
 
 # Test login info (TO BE CHECKED AGAINST HASHED PASSWORDS IN THE FUTURE)
 USERNAME = "admin"
@@ -14,6 +14,7 @@ PASSWORD = "password"
 LOGIN_HTML_PATH = os.path.join(os.getcwd(), 'login.html')
 DEFAULT_HTML_PATH = os.path.join(os.getcwd(), 'default.html')
 
+# Path to desktop (Base directory)
 desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
 
 
@@ -80,8 +81,36 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             return
         
         else:
-            # Handel any other POST request as default
-            super().do_POST()
+            # Handle any other POST request (i.e. file uploads)
+
+            try:
+                # Read file data from form
+                form = cgi.FieldStorage(
+                    fp=self.rfile,
+                    headers=self.headers,
+                    environ={'REQUEST_METHOD': 'POST', 'CONTENT_TYPE':self.headers['Content-Type']}
+                )
+
+                # Get filename and data
+                filename = form['shared_file'].filename
+                data = form['shared_file'].file.read()
+
+                with open(f"./uploaded_{filename}", 'wb') as f:
+                    f.write(data)  # Save the file content to disk
+
+
+                # Send Confirmation
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(b"File upload successful")
+
+            except:
+                # Send error
+                self.send_response(404)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(b"An unexpected error occurred.")
 
 
 

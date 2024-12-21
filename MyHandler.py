@@ -95,6 +95,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 filename = form['shared_file'].filename
                 data = form['shared_file'].file.read()
 
+                # Make sure a file was uploaded
+                assert filename != ""
+
                 with open(f"./uploaded_{filename}", 'wb') as f:
                     f.write(data)  # Save the file content to disk
 
@@ -275,7 +278,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         # Add custom HTML for the directory listing
 
         # Sorted alphabetically, with files listed first then directories
-        rows = []
+        file_html = []
+        directories = []
         file_count = 0
         for file in files:
 
@@ -285,29 +289,37 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 pth = file
 
-            html = "<div class=\"grid_row\">"
             if os.path.isdir(pth):
                 # This is a directory
-                file_link = f'<span class = \"filename\"><a href="/{pth}">{file}</a></span><span>Dir</span><span></span>' 
-                html += file_link + "</div>"
-                rows.append(html)
+                file_link = f'<a href="/{pth}">{file}</a>' 
+                # html += file_link + "</div>"
+                directories.append(file_link)
      
             else:
                 # This is some kind of file
                 pth = pth.rstrip("/")
+
+                html = "<div class=\"grid_row\">"
+
                 try:
-                    file_link = f'<span class = \"filename\"><a href="/{pth}">{file}</a></span><span>File</span><span>{format_size(os.path.getsize(pth))}</span>'
+                    _, ext = os.path.splitext(pth)
+                    file_link = f'<span class = \"filename\"><a href="/{pth}">{file}</a></span><span>{ext}</span><span>{format_size(os.path.getsize(pth))}</span>'
                 except:
                     file_link = f'<span class = \"filename\"><a href="/{pth}">{file}</a></span><span>File</span><span>?</span>'
 
                 html += file_link + "</div>"
-                rows.insert(file_count, html)
+                file_html.append( html)
                 file_count += 1
 
-        html = "".join(rows)
+        html = "".join(file_html)
+
+        # html2 = "<div class = \"dir_container\">" + "".join(directories) + "</div>" + html
 
         # Add this HTML to the base file contents
-        return base_html.replace("</body>", f"{html}</body>")
+
+        tmp_html = base_html.replace("<!-- Directory List -->", "<div class = \"dir_container\">" + "".join(directories) + "</div>")
+
+        return tmp_html.replace("</body>", f"{html}</body>")
 
 
 

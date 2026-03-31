@@ -2,17 +2,17 @@ import http.server
 from http.cookies import SimpleCookie
 import os
 import urllib.parse
-import cgi
+from email.parser import BytesParser
+from email.policy import default
+from dotenv import dotenv_values
 
 # Test login info (TO BE CHECKED AGAINST HASHED PASSWORDS IN THE FUTURE)
-USERNAME = "admin"
-PASSWORD = "password"
-
+config = dotenv_values(".env")
 
 
 # Paths to HTML files to display
-LOGIN_HTML_PATH = os.path.join(os.getcwd(), 'login.html')
-DEFAULT_HTML_PATH = os.path.join(os.getcwd(), 'default.html')
+LOGIN_HTML_PATH = os.path.join(os.getcwd(), 'templates/login.html')
+DEFAULT_HTML_PATH = os.path.join(os.getcwd(), 'templates/default.html')
 
 # Path to desktop (Base directory)
 desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
@@ -84,22 +84,33 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             # Handle any other POST request (i.e. file uploads)
 
             try:
-                # Read file data from form
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={'REQUEST_METHOD': 'POST', 'CONTENT_TYPE':self.headers['Content-Type']}
+                content_length = int(self.headers['Content-Length'])
+                content_type = self.headers['Content-Type']
+
+                # Read raw request body
+                body = self.rfile.read(content_length)
+
+                # Construct a fake email message (required format)
+                msg = BytesParser(policy=default).parsebytes(
+                    b"Content-Type: " + content_type.encode() + b"\r\n\r\n" + body
                 )
 
-                # Get filename and data
-                filename = form['shared_file'].filename
-                data = form['shared_file'].file.read()
+                file_saved = False
 
-                # Make sure a file was uploaded
-                assert filename != ""
+                # Iterate through multipart parts
+                for part in msg.iter_parts():
+                    filename = part.get_filename()
 
-                with open(f"./uploaded_{filename}", 'wb') as f:
-                    f.write(data)  # Save the file content to disk
+                    if filename:
+                        data = part.get_payload(decode=True)
+
+                        with open(f"./uploaded_{filename}", "wb") as f:
+                            f.write(data)
+
+                        file_saved = True
+
+                if not file_saved:
+                    raise ValueError("No file uploaded")
 
 
                 # Send Confirmation
@@ -133,7 +144,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         password = form.get('password', [None])[0]
 
         # Check if credentials are correct
-        return username == USERNAME and password == PASSWORD
+        return username == config["USERNAME"] and password == config["PASSWORD"]
 
 
     def serve_login_page(self, failed_signin = False):
@@ -320,21 +331,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         tmp_html = base_html.replace("<!-- Directory List -->", "<div class = \"dir_container\">" + "".join(directories) + "</div>")
 
         return tmp_html.replace("</body>", f"{html}</body>")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

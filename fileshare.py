@@ -3,7 +3,7 @@ import socketserver
 import ssl
 import os
 import pyqrcode
-from MyHandler import MyHandler
+from server.MyHandler import MyHandler
 
 
 # Assign port (443 for SSL, 8443 for development SSL)
@@ -11,8 +11,8 @@ PORT = 8443
 
 
 # Path to SSL certificates
-CERT_PTH = os.path.join(os.getcwd(), 'server.crt')
-KEY_PTH = os.path.join(os.getcwd(), 'server.key')
+CERT_PTH = os.path.join(os.getcwd(), 'server/server.crt')
+KEY_PTH = os.path.join(os.getcwd(), 'server/server.key')
 
  
 # Get path to the current user's desktop, and change path to that directory
